@@ -223,11 +223,113 @@ void liberarPilha(Pilha* pilha) {
     free(pilha);
 }
 
+
+// ======== ESTRUTURA: AVL ========
+
+typedef struct NoUsuario {
+    char email[100]; 
+    char nome[100];
+    int altura;
+    struct NoUsuario* esq;
+    struct NoUsuario* dir;
+} NoUsuario;
+
+int alturaUsuario(NoUsuario* n) {
+    return n ? n->altura : 0;
+}
+
+int maxUsuario(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+int fatorBalanceamentoUsuario(NoUsuario* n) {
+    return n ? alturaUsuario(n->esq) - alturaUsuario(n->dir) : 0;
+}
+
+NoUsuario* rotacaoDireitaUsuario(NoUsuario* y) {
+    NoUsuario* x = y->esq;
+    NoUsuario* T2 = x->dir;
+
+    x->dir = y;
+    y->esq = T2;
+
+    y->altura = maxUsuario(alturaUsuario(y->esq), alturaUsuario(y->dir)) + 1;
+    x->altura = maxUsuario(alturaUsuario(x->esq), alturaUsuario(x->dir)) + 1;
+
+    return x;
+}
+
+NoUsuario* rotacaoEsquerdaUsuario(NoUsuario* x) {
+    NoUsuario* y = x->dir;
+    NoUsuario* T2 = y->esq;
+
+    y->esq = x;
+    x->dir = T2;
+
+    x->altura = maxUsuario(alturaUsuario(x->esq), alturaUsuario(x->dir)) + 1;
+    y->altura = maxUsuario(alturaUsuario(y->esq), alturaUsuario(y->dir)) + 1;
+
+    return y;
+}
+
+NoUsuario* inserirUsuarioAVL(NoUsuario* raiz, const char* email, const char* nome) {
+    if (raiz == NULL) {
+        NoUsuario* novo = (NoUsuario*) malloc(sizeof(NoUsuario));
+        strcpy(novo->email, email);
+        strcpy(novo->nome, nome);
+        novo->esq = novo->dir = NULL;
+        novo->altura = 1;
+        return novo;
+    }
+
+    if (strcmp(email, raiz->email) < 0)
+        raiz->esq = inserirUsuarioAVL(raiz->esq, email, nome);
+    else if (strcmp(email, raiz->email) > 0)
+        raiz->dir = inserirUsuarioAVL(raiz->dir, email, nome);
+    else
+        return raiz; 
+
+    raiz->altura = 1 + maxUsuario(alturaUsuario(raiz->esq), alturaUsuario(raiz->dir));
+    int fb = fatorBalanceamentoUsuario(raiz);
+
+    if (fb > 1 && strcmp(email, raiz->esq->email) < 0)
+        return rotacaoDireitaUsuario(raiz);
+    if (fb < -1 && strcmp(email, raiz->dir->email) > 0)
+        return rotacaoEsquerdaUsuario(raiz);
+    if (fb > 1 && strcmp(email, raiz->esq->email) > 0) {
+        raiz->esq = rotacaoEsquerdaUsuario(raiz->esq);
+        return rotacaoDireitaUsuario(raiz);
+    }
+    if (fb < -1 && strcmp(email, raiz->dir->email) < 0) {
+        raiz->dir = rotacaoDireitaUsuario(raiz->dir);
+        return rotacaoEsquerdaUsuario(raiz);
+    }
+
+    return raiz;
+}
+
+void listarUsuariosAVL(NoUsuario* raiz) {
+    if (raiz != NULL) {
+        listarUsuariosAVL(raiz->esq);
+        printf("-> %s (%s)\n", raiz->nome, raiz->email);
+        listarUsuariosAVL(raiz->dir);
+    }
+}
+
+void liberarUsuariosAVL(NoUsuario* raiz) {
+    if (raiz) {
+        liberarUsuariosAVL(raiz->esq);
+        liberarUsuariosAVL(raiz->dir);
+        free(raiz);
+    }
+}
+
 int main() {
     Livro* arvore = NULL;
     Lista* disponiveis = criarLista();
     Fila* filaEspera = criarFila();
     Pilha* historico = criarPilha();
+    NoUsuario* usuarios = NULL;
 
     int opcao;
     char titulo[100];
@@ -243,6 +345,8 @@ int main() {
         printf("6. Ver fila de espera\n");
         printf("7. Historico de emprestimos\n");
         printf("8. Desfazer ultimo emprestimo\n");
+        printf("9. Cadastrar Usuario\n");
+        printf("10. Listar Usuarios\n");
         printf("0. Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao);
