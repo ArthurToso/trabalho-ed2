@@ -324,12 +324,175 @@ void liberarUsuariosAVL(NoUsuario* raiz) {
     }
 }
 
+// ======== ÁRVORE RUBRO-NEGRA ========
+
+typedef enum { VERMELHO, PRETO } Cor;
+
+typedef struct NoRN {
+    char titulo[100];
+    Cor cor;
+    struct NoRN* esq;
+    struct NoRN* dir;
+    struct NoRN* pai;
+} NoRN;
+
+typedef struct {
+    NoRN* raiz;
+    NoRN* nil; 
+} ArvoreRN;
+
+NoRN* criarNoNil() {
+    NoRN* nil = (NoRN*) malloc(sizeof(NoRN));
+    nil->cor = PRETO;
+    nil->esq = nil->dir = nil->pai = NULL;
+    strcpy(nil->titulo, "");
+    return nil;
+}
+
+ArvoreRN* criarArvoreRN() {
+    ArvoreRN* arv = (ArvoreRN*) malloc(sizeof(ArvoreRN));
+    arv->nil = criarNoNil();
+    arv->raiz = arv->nil;
+    return arv;
+}
+
+NoRN* criarNoRN(ArvoreRN* arv, const char* titulo) {
+    NoRN* no = (NoRN*) malloc(sizeof(NoRN));
+    strcpy(no->titulo, titulo);
+    no->cor = VERMELHO;
+    no->esq = no->dir = arv->nil;
+    no->pai = NULL;
+    return no;
+}
+
+void rotacaoEsquerdaRN(ArvoreRN* arv, NoRN* x) {
+    NoRN* y = x->dir;
+    x->dir = y->esq;
+    if (y->esq != arv->nil)
+        y->esq->pai = x;
+    y->pai = x->pai;
+    if (x->pai == NULL)
+        arv->raiz = y;
+    else if (x == x->pai->esq)
+        x->pai->esq = y;
+    else
+        x->pai->dir = y;
+    y->esq = x;
+    x->pai = y;
+}
+
+void rotacaoDireitaRN(ArvoreRN* arv, NoRN* y) {
+    NoRN* x = y->esq;
+    y->esq = x->dir;
+    if (x->dir != arv->nil)
+        x->dir->pai = y;
+    x->pai = y->pai;
+    if (y->pai == NULL)
+        arv->raiz = x;
+    else if (y == y->pai->dir)
+        y->pai->dir = x;
+    else
+        y->pai->esq = x;
+    x->dir = y;
+    y->pai = x;
+}
+
+void corrigirInsercaoRN(ArvoreRN* arv, NoRN* z) {
+    while (z->pai != NULL && z->pai->cor == VERMELHO) {
+        if (z->pai == z->pai->pai->esq) {
+            NoRN* y = z->pai->pai->dir;
+            if (y != NULL && y->cor == VERMELHO) {
+                z->pai->cor = PRETO;
+                y->cor = PRETO;
+                z->pai->pai->cor = VERMELHO;
+                z = z->pai->pai;
+            } else {
+                if (z == z->pai->dir) {
+                    z = z->pai;
+                    rotacaoEsquerdaRN(arv, z);
+                }
+                z->pai->cor = PRETO;
+                z->pai->pai->cor = VERMELHO;
+                rotacaoDireitaRN(arv, z->pai->pai);
+            }
+        } else {
+            NoRN* y = z->pai->pai->esq;
+            if (y != NULL && y->cor == VERMELHO) {
+                z->pai->cor = PRETO;
+                y->cor = PRETO;
+                z->pai->pai->cor = VERMELHO;
+                z = z->pai->pai;
+            } else {
+                if (z == z->pai->esq) {
+                    z = z->pai;
+                    rotacaoDireitaRN(arv, z);
+                }
+                z->pai->cor = PRETO;
+                z->pai->pai->cor = VERMELHO;
+                rotacaoEsquerdaRN(arv, z->pai->pai);
+            }
+        }
+    }
+    arv->raiz->cor = PRETO;
+}
+
+void inserirRN(ArvoreRN* arv, const char* titulo) {
+    NoRN* z = criarNoRN(arv, titulo);
+    NoRN* y = NULL;
+    NoRN* x = arv->raiz;
+
+    while (x != arv->nil) {
+        y = x;
+        if (strcmp(z->titulo, x->titulo) < 0)
+            x = x->esq;
+        else
+            x = x->dir;
+    }
+
+    z->pai = y;
+    if (y == NULL)
+        arv->raiz = z;
+    else if (strcmp(z->titulo, y->titulo) < 0)
+        y->esq = z;
+    else
+        y->dir = z;
+
+    z->esq = arv->nil;
+    z->dir = arv->nil;
+    z->cor = VERMELHO;
+
+    corrigirInsercaoRN(arv, z);
+}
+
+void inorderRN(ArvoreRN* arv, NoRN* no) {
+    if (no != arv->nil) {
+        inorderRN(arv, no->esq);
+        printf("-> %s (%s)\n", no->titulo, no->cor == VERMELHO ? "VERMELHO" : "PRETO");
+        inorderRN(arv, no->dir);
+    }
+}
+
+void liberarNosRN(ArvoreRN* arv, NoRN* no) {
+    if (no != arv->nil) {
+        liberarNosRN(arv, no->esq);
+        liberarNosRN(arv, no->dir);
+        free(no);
+    }
+}
+
+void liberarArvoreRN(ArvoreRN* arv) {
+    liberarNosRN(arv, arv->raiz);
+    free(arv->nil);
+    free(arv);
+}
+
 int main() {
     Livro* arvore = NULL;
     Lista* disponiveis = criarLista();
     Fila* filaEspera = criarFila();
     Pilha* historico = criarPilha();
     NoUsuario* usuarios = NULL;
+    ArvoreRN* arvoreRN = criarArvoreRN();
 
     int opcao;
     char titulo[100];
@@ -347,6 +510,8 @@ int main() {
         printf("8. Desfazer ultimo emprestimo\n");
         printf("9. Cadastrar Usuario\n");
         printf("10. Listar Usuarios\n");
+        printf("11. Cadastrar Livro na Arvore Rubro-Negra\n");
+        printf("12. Listar Livros da Arvore Rubro-Negra\n");
         printf("0. Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao);
@@ -402,6 +567,33 @@ int main() {
                 printf("Desfazendo ultimo emprestimo...\n");
                 desempilhar(historico);
                 break;
+            case 9:
+                printf("Nome do Usuario: ");
+                fgets(nome, 100, stdin);
+                nome[strcspn(nome, "\n")] = 0;
+
+                printf("Email do usuario: ");
+                fgets(titulo, 100, stdin);
+                titulo[strcspn(titulo, "\n")] = 0;
+
+                usuarios = inserirUsuarioAVL(usuarios, titulo, nome);
+                printf("Usuario cadastrado com sucesso!\n");
+                break;
+            case 10:
+                printf("Lista de usuarios:\n");
+                listarUsuariosAVL(usuarios);
+                break;
+            case 11:
+                printf("Titulo do livro: ");
+                fgets(titulo, 100, stdin);
+                titulo[strcspn(titulo, "\n")] = 0;
+                inserirRN(arvoreRN, titulo);
+                printf("Livro inserido na Arvore Rubro-Negra\n");
+                break;
+            case 12:
+                printf("\nLivros na Arvore Rubro-Negra: \n");
+                inorderRN(arvoreRN, arvoreRN->raiz);
+                break;
             case 0:
                 printf("Encerrando...\n");
                 break;
@@ -414,6 +606,8 @@ int main() {
     liberarLista(disponiveis);
     liberarFila(filaEspera);
     liberarPilha(historico);
+    liberarUsuariosAVL(usuarios);
+    liberarArvoreRN(arvoreRN);
 
     return 0;
 }
