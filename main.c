@@ -486,6 +486,54 @@ void liberarArvoreRN(ArvoreRN* arv) {
     free(arv);
 }
 
+#define MAX_LIVROS 100
+
+typedef struct {
+    char titulo[100];
+    int conexoes[MAX_LIVROS];
+    int numConexoes;
+} LivroGrafo;
+
+typedef struct {
+    LivroGrafo livros[MAX_LIVROS];
+    int numLivros;
+} Grafo;
+
+void adicionarLivroGrafo(Grafo* g, const char* titulo) {
+    if (g->numLivros >= MAX_LIVROS) return;
+    strcpy(g->livros[g->numLivros].titulo, titulo);
+    g->livros[g->numLivros].numConexoes = 0;
+    g->numLivros++;
+}
+
+int indiceLivro(Grafo* g, const char* titulo) {
+    for (int i = 0; i < g->numLivros; i++) {
+        if (strcmp(g->livros[i].titulo, titulo) == 0)
+            return i;
+    }
+    return -1;
+}
+
+void conectarLivros(Grafo* g, const char* t1, const char* t2) {
+    int i1 = indiceLivro(g, t1);
+    int i2 = indiceLivro(g, t2);
+    if (i1 == -1 || i2 == -1 || i1 == i2) return;
+
+    g->livros[i1].conexoes[g->livros[i1].numConexoes++] = i2;
+    g->livros[i2].conexoes[g->livros[i2].numConexoes++] = i1;
+}
+
+void mostrarGrafo(Grafo* g) {
+    printf("\nGrafo de Livros Relacionados:\n");
+    for (int i = 0; i < g->numLivros; i++) {
+        printf("Livro: %s\n", g->livros[i].titulo);
+        for (int j = 0; j < g->livros[i].numConexoes; j++) {
+            int idx = g->livros[i].conexoes[j];
+            printf("  -> %s\n", g->livros[idx].titulo);
+        }
+    }
+}
+
 int main() {
     Livro* arvore = NULL;
     Lista* disponiveis = criarLista();
@@ -493,6 +541,8 @@ int main() {
     Pilha* historico = criarPilha();
     NoUsuario* usuarios = NULL;
     ArvoreRN* arvoreRN = criarArvoreRN();
+    Grafo grafoLivros;
+    grafoLivros.numLivros = 0;
 
     int opcao;
     char titulo[100];
@@ -512,6 +562,9 @@ int main() {
         printf("10. Listar Usuarios\n");
         printf("11. Cadastrar Livro na Arvore Rubro-Negra\n");
         printf("12. Listar Livros da Arvore Rubro-Negra\n");
+        printf("13. Adicionar Livro ao grafo de relacionamentos\n");
+        printf("14. Conectar dois livros no grafo\n");
+        printf("15. Visualizar grafo de livros relacionados\n");
         printf("0. Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao);
@@ -594,6 +647,24 @@ int main() {
                 printf("\nLivros na Arvore Rubro-Negra: \n");
                 inorderRN(arvoreRN, arvoreRN->raiz);
                 break;
+            case 13:
+                printf("Titulo do Livro para ser adicionado ao grafo: ");
+                fgets(titulo, 100, stdin);
+                titulo[strcspn(titulo, "\n")] = 0;
+                adicionarLivroGrafo(&grafoLivros, titulo);
+                break;
+            case 14:
+                char t1[100], t2[100];
+                printf("Livro 1: ");
+                fgets(t1, 100, stdin);
+                t1[strcspn(t1, "\n")] = 0;
+                printf("Livro 2: ");
+                fgets(t2, 100, stdin);
+                t2[strcspn(t2, "\n")] = 0;
+                conectarLivros(&grafoLivros, t1, t2);
+                break;
+            case 15:
+                mostrarGrafo(&grafoLivros);
             case 0:
                 printf("Encerrando...\n");
                 break;
